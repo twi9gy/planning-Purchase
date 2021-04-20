@@ -1,0 +1,136 @@
+---
+openapi: 3.0.0
+info:
+  title: Planing purchase
+  description: Api для сервиса построения планов закупок
+  version: 2.0-oas3
+servers:
+- url: http://planning-purchase.local/api/v1
+tags:
+- name: api
+  description: методы для построения планов закупок
+paths:
+  /purchase_plan/create:
+    post:
+      tags:
+      - api
+      summary: Построение плана закупок.
+      description: Модель Уилсона для построения плана закупок.
+      operationId: api.purchase_plan.create
+      parameters:
+      - name: service_level
+        in: query
+        required: true
+        description: Уровень обслуживания.
+        style: form
+        explode: true
+        schema:
+          type: integer
+      - name: storage_costs
+        in: query
+        description: Затраты на хранение продукции, ед.денежных средств.
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: float
+      - name: product_price
+        in: query
+        required: true
+        description: Стоимость единицы продукции, ед.денежных средств.
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: float
+      - name: shipping_costs
+        in: query
+        description: Затраты на доставку продукции, ед.денежных средств.
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: float
+      - name: time_shipping
+        in: query
+        description: Время доставки продукции, дни.
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: int32
+      - name: delayed_deliveries
+        in: query
+        description: Задержка поставок, дни.
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: int32
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/body'
+      responses:
+        "200":
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        "400":
+          description: unsuccessful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_400'
+components:
+  schemas:
+    Plan:
+      type: object
+      properties:
+        size_order:
+          type: number
+          description: Размер заказа
+          format: float
+          example: 10
+        total_costs:
+          type: number
+          description: Общие затраты
+          format: float
+          example: 3.5
+        freq_delivery:
+          type: number
+          description: Периодичность достаки
+          format: int32
+          example: 2
+        order_point:
+          type: number
+          description: Точка заказа
+          format: int32
+          example: 5
+        reserve:
+          type: number
+          description: Страховой запас
+          format: int32
+          example: 2
+        orders:
+          type: object
+      description: Результат создания модели Уилсона
+    body:
+      required:
+      - file
+      type: object
+      properties:
+        file:
+          type: string
+          description: Файл с информацией о продажах
+          format: binary
+    inline_response_400:
+      properties:
+        message:
+          type: string

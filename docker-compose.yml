@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  api:
+    container_name: planning-purchase.local
+    restart: always
+    build: api
+    volumes: ['./api:/api']
+    networks:
+      - planningPurchaseNetwork
+      - gateway-api
+    expose:
+      - "5001"
+    ports:
+      - "5001:5000"
+  nginx-planning_purchase:
+    container_name: nginx-planning_purchase
+    restart: always
+    build: ./nginx
+    networks:
+      - planningPurchaseNetwork
+      - gateway-api
+    ports:
+      - "84:80"
+networks:
+  planningPurchaseNetwork:
+  gateway-api:
+    external:
+      name: purchaseplan_api_default
