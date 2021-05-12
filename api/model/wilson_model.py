@@ -3,6 +3,7 @@
 ##############################################
 
 from flask import jsonify
+from random import randint
 import numpy as np
 import pandas as pd
 import json
@@ -10,6 +11,7 @@ import math
 import datetime as dt
 import time
 import scipy.stats as sps
+import json
 
 
 ##############################################
@@ -32,10 +34,10 @@ class Wilson:
         self.service_level = service_level / 100
         self.storage_costs = storage_costs
         self.shipping_costs = shipping_costs
-        self.time_shipping = time_shipping
+        self.time_shipping = int(time_shipping)
         self.product_price = product_price
-        self.delayed_deliveries = delayed_deliveries
-        self.prediction = pd.DataFrame(pd.read_json(file, convert_dates=False, convert_axes=False))['prediction']
+        self.delayed_deliveries = int(delayed_deliveries)
+        self.prediction = pd.Series(json.load(file)['prediction'])
 
     # Метод для получения плана закупок
     def getPurchase(self):
@@ -44,18 +46,16 @@ class Wilson:
         demand_sum = self.prediction.values.sum()
 
         # Определение страховаго запаса [ед.товара]
-        self.reserve = sps.norm.ppf(self.service_level) * math.sqrt(
-            self.time_shipping * self.prediction.values.std() + demand_mean * self.delayed_deliveries)
+        self.reserve = sps.norm.ppf(self.service_level) * math.sqrt(self.time_shipping * self.prediction.values.std() + demand_mean * self.delayed_deliveries)
 
         # Получение размера заказа [ед.товара]
-        self.size_order = math.sqrt(
-            (2 * demand_sum * self.shipping_costs) / (len(self.prediction.values) * self.storage_costs))
+        self.size_order = math.sqrt((2 * demand_sum * self.shipping_costs) / (len(self.prediction.values) * self.storage_costs))
 
         # Период потребления одной поставки [ед.времени]
-        self.freq_delivery = self.size_order * len(self.prediction.values) / demand_sum
+        freq_delivery = self.size_order * len(self.prediction.values) / demand_sum
 
-        freq = dt.timedelta(days=self.freq_delivery).days
-        if round(dt.timedelta(days=self.freq_delivery).seconds / 60) > 0:
+        freq = dt.timedelta(days=freq_delivery).days
+        if round(dt.timedelta(days=freq_delivery).seconds / 60) > 0:
             freq = freq + 1
 
         # Количетсво необходимых поставок
@@ -68,16 +68,16 @@ class Wilson:
         self.P = demand_mean * (self.time_shipping + freq / 2) + self.reserve
 
         # Симуляция деятельности предприятия
-        Q, orders = self.getOrders(freq)
+        Q, orders, orders_origin = self.getOrders(freq)
 
         keys = Q.keys()
         Q_result = {str(k): 0 for k in keys}
-        for i in Q.keys():
+        for i in keys:
             Q_result[str(i)] = round(Q[i])
 
         keys = orders.keys()
         orders_result = {str(k): 0 for k in keys}
-        for i in orders.keys():
+        for i in keys:
             orders_result[str(i)] = round(orders[i])
 
         return {
@@ -87,8 +87,11 @@ class Wilson:
             'reserve': round(self.reserve),
             'count_orders': round(count_orders),
             'total_costs': round(total_costs, 2),
-            'Q': Q_result,
-            'orders': orders_result
+            'product_count': Q_result,
+            'start_date': self.prediction.index[0],
+            'end_date': self.prediction.index[-1],
+            'orders': orders_result,
+            'orders_origin': orders_origin
         }
 
     # Метод для моделирования закупок
@@ -100,16 +103,11 @@ class Wilson:
         # Получение спроса
         demand = pd.DataFrame({'Count': self.prediction.values})
 
-        # Генерация периодов проверки
-        step = dt.timedelta(days=round(freq))
-        periods = [i + step for i in generated_time['Date']]
-        check = []
-        for i in range(0, len(periods), step.days):
-            check.append(periods[i])
-
         # Устанавлием количество запасов на первый день
-        currentQ = {generated_time['Date'][0]: self.size_order + self.reserve}
+        currentQ = { generated_time['Date'][0]: self.P }
         orders = {}
+        orders_origin = []
+        index_day = 0
 
         # Имитация работы предприятия
         for i in range(len(generated_time['Date']) - 1):
@@ -123,9 +121,16 @@ class Wilson:
             else:
                 currentQ[generated_time['Date'][i + 1]] = currentQ[generated_time['Date'][i]] - demand['Count'][i]
             # Не пришло ли время проверки ?
-            if int(generated_time['Date'][i].day) % freq == 0 and i != 0:
+            if index_day % freq == 0:
                 # Время проверки
                 if self.P >= currentQ[generated_time['Date'][i]]:
+                    # Генерируем время доставки
+                    delivery = randint(self.time_shipping, self.time_shipping + self.delayed_deliveries)
                     # Делаем заказ
-                    orders[generated_time['Date'][i + 1]] = self.size_order
-        return currentQ, orders
+                    try:
+                        orders[generated_time['Date'][i + delivery]] = self.size_order
+                        orders_origin.append(generated_time['Date'][i])
+                    except LookupError:
+                        orders_origin.append(generated_time['Date'][i])
+            index_day = index_day + 1
+        return currentQ, orders, orders_origin
