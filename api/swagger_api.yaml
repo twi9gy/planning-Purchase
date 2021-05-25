@@ -18,6 +18,14 @@ paths:
       description: Модель Уилсона для построения плана закупок.
       operationId: api.purchase_plan.create
       parameters:
+      - name: freq_interval
+        in: query
+        description: Частота интервала у прогнозируемого периода, (1 день, 7 дней, 1 месяц).
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: string
       - name: service_level
         in: query
         required: true
@@ -92,6 +100,7 @@ components:
   schemas:
     Plan:
       type: object
+      description: Результат создания модели Уилсона
       properties:
         size_order:
           type: number
@@ -108,7 +117,7 @@ components:
           description: Периодичность достаки
           format: int32
           example: 2
-        order_point:
+        point_order:
           type: number
           description: Точка заказа
           format: int32
@@ -118,9 +127,29 @@ components:
           description: Страховой запас
           format: int32
           example: 2
-        orders:
+        count_orders:
+          type: number
+          description: Количество заказов за период
+          format: int32
+          example: 10
+        product_count:
           type: object
-      description: Результат создания модели Уилсона
+          description: Количество продукции за период
+        orders_origin:
+          description: Даты создания заказов
+          type: object
+        orders:
+          description: Даты прибытия заказов
+          type: object
+        start_date:
+          type: string
+          description: Дата начала периода
+          example: 2020-10-03
+        end_date:
+          type: string
+          description: Дата конца периода
+          example: 2020-11-03
+
     body:
       required:
       - file
@@ -132,5 +161,11 @@ components:
           format: binary
     inline_response_400:
       properties:
+        code:
+          type: number
+          format: int32
+          example: 400
+          description: Код ошибки
         message:
           type: string
+          description: Сообщение ошибки
