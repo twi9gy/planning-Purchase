@@ -10,13 +10,13 @@ tags:
 - name: api
   description: методы для построения планов закупок
 paths:
-  /purchase_plan/create:
+  /wilson/create:
     post:
       tags:
       - api
       summary: Построение плана закупок.
       description: Модель Уилсона для построения плана закупок.
-      operationId: api.purchase_plan.create
+      operationId: api.wilson.create
       parameters:
       - name: freq_interval
         in: query

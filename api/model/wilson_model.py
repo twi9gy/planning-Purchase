@@ -39,7 +39,7 @@ class Wilson:
         self.time_shipping = int(time_shipping)
         self.product_price = product_price
         self.delayed_deliveries = int(delayed_deliveries)
-        self.prediction = pd.Series(json.load(file)['prediction'])
+        self.prediction = round(pd.Series(json.load(file)['prediction']))
 
     # Метод для получения плана закупок
     def getPurchase(self):
@@ -132,7 +132,7 @@ class Wilson:
         for i in range(delta.days):
             forecast_period.append(dt_start_datetime + dt.timedelta(i))
             if self.freq_interval == '1D':
-                purchase_count.append(round(demand['Count'][i]))
+                purchase_count.append(demand['Count'][i])
             elif self.freq_interval == '7D':
                 if index_day % 7 == 0:
                     current_demand = demand['Count'][index_demand] / 7
@@ -166,7 +166,11 @@ class Wilson:
             # Прошлый заказ уже пришел ?
             try:
                 if order is not None:
-                    currentQ[generated_time['Date'][i + 1]] = currentQ[generated_time['Date'][i]] + self.size_order
+                    tmp = currentQ[generated_time['Date'][i]] + self.size_order - purchase_count[i]
+                    if tmp > 0:
+                        currentQ[generated_time['Date'][i + 1]] = tmp
+                    else:
+                        currentQ[generated_time['Date'][i + 1]] = 0
                 else:
                     if currentQ[generated_time['Date'][i]] - purchase_count[i] > 0:
                         currentQ[generated_time['Date'][i + 1]] = currentQ[generated_time['Date'][i]] - purchase_count[i]
@@ -174,17 +178,27 @@ class Wilson:
                         currentQ[generated_time['Date'][i + 1]] = 0
             except LookupError:
                 print('Ошибка. Выход за пределы массива.')
-            # Не пришло ли время проверки ?
-            if index_day % freq == 0:
-                # Время проверки
-                if self.P >= currentQ[generated_time['Date'][i]]:
-                    # Генерируем время доставки
-                    delivery = randint(self.time_shipping, self.time_shipping + self.delayed_deliveries)
-                    # Делаем заказ
-                    try:
-                        orders[generated_time['Date'][i + delivery]] = self.size_order
-                        orders_origin.append(generated_time['Date'][i])
-                    except LookupError:
-                        orders_origin.append(generated_time['Date'][i])
+            if self.reserve > currentQ[generated_time['Date'][i]]:
+                # Генерируем время доставки
+                delivery = randint(self.time_shipping, self.time_shipping + self.delayed_deliveries)
+                # Делаем заказ
+                try:
+                    orders[generated_time['Date'][i + delivery]] = self.size_order
+                    orders_origin.append(generated_time['Date'][i])
+                except LookupError:
+                    orders_origin.append(generated_time['Date'][i])
+            else:
+                # Не пришло ли время проверки ?
+                if index_day % freq == 0:
+                    # Время проверки
+                    if self.P >= currentQ[generated_time['Date'][i]]:
+                        # Генерируем время доставки
+                        delivery = randint(self.time_shipping, self.time_shipping + self.delayed_deliveries)
+                        # Делаем заказ
+                        try:
+                            orders[generated_time['Date'][i + delivery]] = self.size_order
+                            orders_origin.append(generated_time['Date'][i])
+                        except LookupError:
+                            orders_origin.append(generated_time['Date'][i])
             index_day += 1
         return currentQ, orders, orders_origin
