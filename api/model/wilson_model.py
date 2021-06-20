@@ -76,7 +76,7 @@ class Wilson:
         total_costs = demand_sum * self.product_price + demand_sum * self.shipping_costs / self.size_order + self.storage_costs * self.size_order / 2
 
         # Определение точки заказа
-        self.P = demand_mean / freq_index * (self.time_shipping + freq / 2)
+        self.P = self.size_order # demand_mean / freq_index * (self.time_shipping + freq / 2)
 
         self.size_order = self.P
 
