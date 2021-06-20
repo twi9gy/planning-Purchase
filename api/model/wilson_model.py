@@ -75,7 +75,7 @@ class Wilson:
         total_costs = demand_sum * self.product_price + demand_sum * self.shipping_costs / self.size_order + self.storage_costs * self.size_order / 2
 
         # Определение точки заказа
-        self.P = demand_mean / freq_index * (self.time_shipping + freq / 2)
+        self.P = self.size_order # demand_mean / freq_index * (self.time_shipping + freq / 2)
 
         # Симуляция деятельности предприятия
         Q, orders, orders_origin = self.getOrders(freq)
@@ -158,11 +158,11 @@ class Wilson:
         index_day = 0
 
         # Имитация работы предприятия
-        for i in range(len(generated_time)):
+        for i in range(0, len(generated_time) - 1):
             order = None
             if len(orders) > 0:
-                if generated_time['Date'][i] in orders:
-                    order = orders[generated_time['Date'][i]]
+                if generated_time['Date'][i + 1] in orders:
+                    order = orders[generated_time['Date'][i + 1]]
             # Прошлый заказ уже пришел ?
             try:
                 if order is not None:
@@ -178,16 +178,6 @@ class Wilson:
                         currentQ[generated_time['Date'][i + 1]] = 0
             except LookupError:
                 print('Ошибка. Выход за пределы массива.')
-            # if self.reserve > currentQ[generated_time['Date'][i]]:
-            #     # Генерируем время доставки
-            #     delivery = randint(self.time_shipping, self.time_shipping + self.delayed_deliveries)
-            #     # Делаем заказ
-            #     try:
-            #         orders[generated_time['Date'][i + delivery]] = self.size_order
-            #         orders_origin.append(generated_time['Date'][i])
-            #     except LookupError:
-            #         orders_origin.append(generated_time['Date'][i])
-            # Не пришло ли время проверки ?
             if index_day % freq == 0:
                 # Время проверки
                 if self.P >= currentQ[generated_time['Date'][i]]:
