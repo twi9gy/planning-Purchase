@@ -20,7 +20,7 @@ paths:
       parameters:
       - name: freq_interval
         in: query
-        description: Частота интервала у прогнозируемого периода, (1 день, 7 дней, 1 месяц).
+        description: Частота интервала у прогнозируемого периода, (1 день = 1D, 7 дней = 7D, 1 месяц = 1M).
         required: true
         style: form
         explode: true
@@ -29,7 +29,7 @@ paths:
       - name: service_level
         in: query
         required: true
-        description: Уровень обслуживания.
+        description: Уровень обслуживания, %.
         style: form
         explode: true
         schema:
@@ -75,6 +75,15 @@ paths:
         description: Задержка поставок, дни.
         style: form
         explode: true
+        schema:
+          type: number
+          format: int32
+      - name: production_quantity
+        in: query
+        description: Текущий уровень запасов, ед. продукции.
+        style: form
+        explode: true
+        required: true
         schema:
           type: number
           format: int32

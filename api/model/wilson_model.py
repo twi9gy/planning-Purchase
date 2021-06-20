@@ -29,7 +29,7 @@ class Wilson:
     """docstring"""
 
     def __init__(self, file, freq_interval, service_level, storage_costs, product_price, shipping_costs, time_shipping,
-                 delayed_deliveries):
+                 delayed_deliveries, production_quantity):
         """Constructor"""
         self.file = file
         self.freq_interval = freq_interval
@@ -40,6 +40,7 @@ class Wilson:
         self.product_price = product_price
         self.delayed_deliveries = int(delayed_deliveries)
         self.prediction = round(pd.Series(json.load(file)['prediction']))
+        self.production_quantity = production_quantity
 
     # Метод для получения плана закупок
     def getPurchase(self):
@@ -76,6 +77,8 @@ class Wilson:
 
         # Определение точки заказа
         self.P = demand_mean / freq_index * (self.time_shipping + freq / 2)
+
+        self.size_order = self.P
 
         # Симуляция деятельности предприятия
         Q, orders, orders_origin = self.getOrders(freq)
@@ -152,17 +155,17 @@ class Wilson:
         generated_time['Date'] = pd.to_datetime(generated_time['Date'])
 
         # Устанавлием количество запасов на первый день
-        currentQ = {generated_time['Date'][0]: self.P + self.reserve}
+        currentQ = {generated_time['Date'][0]: self.production_quantity}
         orders = {}
         orders_origin = []
         index_day = 0
 
         # Имитация работы предприятия
-        for i in range(len(generated_time)):
+        for i in range(0, len(generated_time) - 1):
             order = None
             if len(orders) > 0:
-                if generated_time['Date'][i] in orders:
-                    order = orders[generated_time['Date'][i]]
+                if generated_time['Date'][i + 1] in orders:
+                    order = orders[generated_time['Date'][i + 1]]
             # Прошлый заказ уже пришел ?
             try:
                 if order is not None:
@@ -178,16 +181,6 @@ class Wilson:
                         currentQ[generated_time['Date'][i + 1]] = 0
             except LookupError:
                 print('Ошибка. Выход за пределы массива.')
-            # if self.reserve > currentQ[generated_time['Date'][i]]:
-            #     # Генерируем время доставки
-            #     delivery = randint(self.time_shipping, self.time_shipping + self.delayed_deliveries)
-            #     # Делаем заказ
-            #     try:
-            #         orders[generated_time['Date'][i + delivery]] = self.size_order
-            #         orders_origin.append(generated_time['Date'][i])
-            #     except LookupError:
-            #         orders_origin.append(generated_time['Date'][i])
-            # Не пришло ли время проверки ?
             if index_day % freq == 0:
                 # Время проверки
                 if self.P >= currentQ[generated_time['Date'][i]]:
